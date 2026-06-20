@@ -1,0 +1,65 @@
+---
+title: "User Profiles"
+description: "Save and manage your rip preferences"
+---
+
+Karen lets you save your rip preferences so you can download without typing options every time.
+
+## What Can You Save?
+
+| Setting | Options | Default |
+|---------|---------|---------|
+| `format` | `alac`, `aac` | `alac` (lossless) |
+| `upload` | `botapi`, `mtproto`, `gofile` | Auto-select based on file size |
+| `bitrate` | `256` (AAC bitrate, kbps) | `256` |
+
+## Setting Your Preferences
+
+### View Your Profile
+```
+/profile show
+```
+
+### Set a Preference
+```
+/profile set format=aac
+/profile set upload=mtproto
+/profile set bitrate=192
+```
+
+You can set multiple in one command:
+```
+/profile set format=alac upload=botapi
+```
+
+### Clear Everything
+```
+/profile clear
+```
+
+This resets you to defaults (format=alac, auto upload).
+
+## Examples
+
+### Save "Always AAC"
+```
+/profile set format=aac
+```
+
+Then `/dl https://...` will always use AAC format.
+
+### Save "Always Use MTProto"
+```
+/profile set upload=mtproto
+```
+
+Every download will go through MTProto, even if it's <50MB.
+
+### Save "Low Bandwidth (AAC 192kbps)"
+```
+/profile set format=aac bitrate=192
+```
+
+---
+
+See [User Commands](/commands/user-commands) for more details on `/dl` and other commands.

@@ -1,0 +1,210 @@
+---
+title: "Architecture Overview"
+description: "Karen's multi-service design for DRM-free Apple Music downloads"
+---
+
+Karen is a **distributed, multi-service system** that extracts lossless audio from Apple Music and delivers it via Telegram. It uses a pool-based load balancer to distribute requests across multiple wrapper-manager instances.
+
+## System Diagram
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Telegram User                         │
+└────────────────────────┬─────────────────────────────────┘
+                         │ /dl, /search, /playlist
+                         ▼
+        ┌────────────────────────────────┐
+        │  Karen Bot (Go)                │
+        │  - Telegram command handler    │
+        │  - Download orchestrator       │
+        │  - MTProto uploader            │
+        │  - User profile manager        │
+        └────┬───────────────────────┬───┘
+             │                       │
+        ┌────▼──────────┐    ┌──────▼─────────┐
+        │  Pool (FIFO)  │    │  Config / CLI  │
+        │  - Load bal.  │    │  - User prefs  │
+        │  - Rotation   │    │  - Saved rips  │
+        └────┬──────────┘    └────────────────┘
+             │ gRPC (bidirectional)
+        ┌────▼──────────────────────────────┐
+        │   Wrapper-Manager Instances       │
+        │  (one per Apple Music account)    │
+        ├─────────────────────────────────┐ │
+        │ ┌──────────────────────────────┐ │ │
+        │ │ Wrapper #1 (Account 1)       │ │ │
+        │ │ - Android emulator + Frida   │ │ │
+        │ │ - Apple Music app hooks      │ │ │
+        │ │ - gRPC: Login, M3U8, Decrypt│ │ │
+        │ │ - Port 8081, Volume: wm-1   │ │ │
+        │ └─────────────────��────────────┘ │ │
+        │ ┌──────────────────────────────┐ │ │
+        │ │ Wrapper #2 (Account 2)       │ │ │
+        │ │ - Android emulator + Frida   │ │ │
+        │ │ - Apple Music app hooks      │ │ │
+        │ │ - gRPC: Login, M3U8, Decrypt│ │ │
+        │ │ - Port 8082, Volume: wm-2   │ │ │
+        │ └──────────────────────────────┘ │ │
+        │              ...                  │
+        └─────────────────────────────────┘
+```
+
+## Core Components
+
+### Bot (Go, Docker)
+
+The main orchestrator. It:
+
+- **Listens to Telegram** for `/dl`, `/search`, `/playlist` commands
+- **Fetches content** from Apple Music API
+- **Acquires workers** from the pool
+- **Downloads HLS segments** in parallel
+- **Decrypts via gRPC** (bidirectional stream with wrapper-manager)
+- **Remuxes with ffmpeg** (ALAC → ALAC/AAC, add metadata)
+- **Uploads to Telegram** (Bot API <50MB, MTProto 50MB–2GB, Gofile >2GB)
+- **Manages user profiles** (saved rip preferences)
+
+**Key files:**
+- `bot/main.go` — startup, config loading
+- `bot/telegram_bot.go` — Telegram command handling
+- `bot/pool.go` — worker pool logic
+- `bot/mtproto.go` — MTProto upload
+- `bot/profile.go` — user profile storage
+
+### Wrapper-Manager (Go/Kotlin, Docker)
+
+A Frida-hooked Android emulator that acts as a decryption oracle.
+
+Each instance:
+- Runs **one Apple Music account**
+- Exposes **three gRPC endpoints:**
+  - `Login(username, password)` — one-time account login
+  - `GetM3U8(song_id)` — fetch HLS playlist + DRM key
+  - `Decrypt(encrypted_segment_stream)` — bidirectional stream for DRM decryption
+
+**Why Frida?**
+Apple Music uses **FairPlay DRM**. The bot can't decrypt without the app's DRM keys. Frida intercepts the decryption calls inside the app (running in the emulator), allowing Karen to decrypt segments server-side.
+
+**Upstream:** [WorldObservationLog/wrapper-manager](https://github.com/WorldObservationLog/wrapper-manager)
+
+**Karen's patches:**
+- WebPlayback nil-safety bug fix
+- Emulator timeout increased 5s → 25s
+
+### Pool (Go)
+
+A **channel-based FIFO load balancer** that distributes work across wrapper-manager instances.
+
+**Semantics:**
+```go
+worker := pool.Acquire()  // FIFO: waits if all busy
+// use worker...
+pool.Release(worker)      // returns to pool
+```
+
+**Rotation:**
+- If a wrapper times out or fails, it's marked unavailable
+- Requests rotate to the next healthy instance
+- Automatic recovery on next successful RPC
+
+## Data Flow
+
+### Ripping a Song (Happy Path)
+
+```
+User: /dl https://music.apple.com/...
+  ↓
+Bot: Parse URL, fetch song metadata
+  ↓
+Bot: Acquire wrapper-manager from pool
+  ↓
+Wrapper: GetM3U8(song_id)
+  ← Wrapper sends M3U8 (HLS playlist) + DRM key
+  ↓
+Bot: Download HLS segments in parallel (4 workers)
+  ↓
+Bot: Open bidirectional gRPC stream: Decrypt(segments)
+  ↓
+Bot ↔ Wrapper: Send encrypted, recv decrypted (interleaved)
+  ↓
+Bot: Remux with ffmpeg (ALAC + metadata + cover)
+  ↓
+Bot: Determine upload method (file size)
+  - <50MB: Bot API direct
+  - 50MB–2GB: MTProto upload
+  - >2GB: Gofile + link
+  ↓
+Bot: Upload + send to Telegram
+  ↓
+Bot: Release wrapper back to pool
+  ↓
+User: Receives file ✅
+```
+
+## Key Design Decisions
+
+| Decision | Why |
+|----------|-----|
+| **Wrapper-per-account** | Each account needs isolated state. Simpler than multiplexing. |
+| **Frida + Android emulator** | Only way to get valid DRM keys. |
+| **gRPC** | Efficient, bidirectional, protobuf for audio streams. |
+| **Pool + channel-based** | Simple FIFO fairness, automatic load balancing. |
+| **MTProto for >50MB** | Bot API has 50MB cap. MTProto is Telegram's native protocol. |
+| **Gofile fallback** | Handles edge case of very large albums (>2GB zipped). |
+
+## Persistence & Recovery
+
+| Data | Storage | Persists Across |
+|------|---------|-----------------|
+| Apple tokens | `wm-data-N` volumes | Restarts, redeploys, code updates |
+| User profiles | `bot-state/profiles/` | Restarts, redeploys, code updates |
+| Download cache | `bot-state/cache/` | Restarts (cleared on major version updates) |
+| Telegram session | `bot-state/tg_session/` | Restarts, redeploys |
+
+Volumes are **not** automatically deleted on `docker compose down`, so data persists across deployments.
+
+## Scaling
+
+**Scale horizontally** by increasing `APPLE_ID_N` / `APPLE_PASS_N` pairs:
+
+- 1 account: ~2–3 concurrent downloads
+- 2 accounts: ~4–6 concurrent downloads
+- N accounts: ~2N–3N concurrent downloads
+
+Each wrapper-manager uses ~1.5GB RAM + 2GB disk (emulator image). VPS should have:
+
+- **2 accounts:** 4GB RAM, 8GB disk
+- **4 accounts:** 8GB RAM, 12GB disk
+- **8+ accounts:** 16GB+ RAM, 20GB+ disk
+
+See [Multi-Account Scaling](/guides/multi-account-scaling) for production tuning.
+
+## Security Model
+
+Karen does **not** authenticate users by default — it trusts Telegram's chat ID whitelist. If you expose the bot to untrusted users, they can:
+
+- Download any song from Apple Music
+- Rip entire playlists / artists
+- See others' saved profiles
+
+**Mitigations:**
+
+1. **Always** set `TELEGRAM_ALLOWED_CHAT_IDS` to a private group or your ID only
+2. **Keep `.env` secure** (chmod 600, not in git, not in screenshots)
+3. **Rotate tokens** if compromised
+
+See [Troubleshooting](/guides/troubleshooting) for security best practices.
+
+## Next: Dive Deeper
+
+<Card title="Bot Architecture" icon="cpu" href="/architecture/bot">
+  Telegram, pool, upload logic
+</Card>
+
+<Card title="Wrapper-Manager" icon="smartphone" href="/architecture/wrapper-manager">
+  Frida, gRPC, emulator
+</Card>
+
+<Card title="Deployment" icon="cloud" href="/architecture/deployment">
+  GitHub Actions, VPS setup
+</Card>

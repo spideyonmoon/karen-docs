@@ -1,47 +1,109 @@
 ---
 title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+description: "Get Karen running in 5 minutes"
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+Get Karen up and running on your VPS in minutes.
 
 ## Prerequisites
 
-Before you begin, you must have:
+- Linux VPS (Ubuntu/Debian) with Docker & Docker Compose
+- Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
+- At least one Apple Music account (2FA disabled)
+- (Optional) Telegram API credentials for MTProto uploads
+- (Optional) Gofile API token for fallback delivery
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+## Get Started
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
-
+  <Step title="Clone & Configure">
     ```bash
-    npm install your-package
+    git clone -b feat/wrapper-manager https://github.com/spideyonmoon/karen.git ~/karen
+    cd ~/karen
+    cp .env.example .env
+    nano .env
     ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+    Fill in your secrets:
 
     ```bash
-    your-cli init
+    TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN"
+    TELEGRAM_API_ID=12345
+    TELEGRAM_API_HASH="YOUR_API_HASH"
+    TELEGRAM_ALLOWED_CHAT_IDS="-100123456789"
+    ADMIN_IDS="111111111"
+    MEDIA_USER_TOKEN="YOUR_MEDIA_USER_TOKEN"
+
+    APPLE_ID_1="user1@example.com"
+    APPLE_PASS_1="password1"
+    APPLE_ID_2="user2@example.com"
+    APPLE_PASS_2="password2"
     ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
+    <Tip>
+      Add more `APPLE_ID_N` / `APPLE_PASS_N` pairs to scale horizontally.
+    </Tip>
+  </Step>
+
+  <Step title="Bootstrap Services">
     ```bash
-    your-cli start
+    ./setup.sh
+    ```
+
+    This runs one-time setup:
+    1. Generates config from `.env`
+    2. Builds `karen-wrapper-manager:local` image
+    3. Boots all wrapper-manager instances
+    4. Logs in each Apple account
+    5. Starts the bot
+
+    Monitor startup:
+    ```bash
+    docker compose logs -f bot
+    ```
+
+    Wait for: `Telegram bot started. Waiting for updates...`
+  </Step>
+
+  <Step title="Test It">
+    Send your bot a Telegram message:
+
+    ```
+    /start
+    ```
+
+    Then rip a song:
+
+    ```
+    /dl https://music.apple.com/us/album/song-name/id1234567890?i=5678901234
+    ```
+
+    Watch the logs:
+    ```bash
+    docker compose logs -f bot
     ```
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## What's Next?
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+<Card title="Prerequisites Guide" icon="checklist" href="/prerequisites">
+  Detailed setup requirements
+</Card>
+
+<Card title="Full Setup Guide" icon="cog" href="/setup">
+  Step-by-step deployment
+</Card>
+
+<Card title="User Commands" icon="message-square" href="/commands/user-commands">
+  Available Telegram commands
+</Card>
+
+<Card title="Troubleshooting" icon="bug" href="/guides/troubleshooting">
+  Common issues & solutions
+</Card>
+
+## Need Help?
+
+- **GitHub Issues:** [spideyonmoon/karen](https://github.com/spideyonmoon/karen/issues)
+- **Telegram Support:** [@spideyonmoon](https://t.me/spideyonmoon)

@@ -1,0 +1,109 @@
+---
+title: "Admin Commands"
+description: "Bot management and control commands"
+---
+
+Commands available to users in the `ADMIN_IDS` list.
+
+## Service Management
+
+### `/admin restart`
+Restart all services (bot and wrappers).
+
+```
+/admin restart
+```
+
+**Use when:**
+- Bot is unresponsive
+- Need to reload config
+- Wrappers are stuck
+
+### `/admin restart-wrapper <N>`
+Restart a specific wrapper-manager instance.
+
+```
+/admin restart-wrapper 1
+```
+
+## State & Cache
+
+### `/admin cache-clear`
+Clear the download cache.
+
+```
+/admin cache-clear
+```
+
+**Clears:**
+- Downloaded HLS segments
+- Cached playlists
+- Temporary files
+
+### `/admin state-dump`
+Dump the internal bot state (for debugging).
+
+```
+/admin state-dump
+```
+
+**Returns:**
+- Pool status (worker availability)
+- Active downloads
+- Error counts
+
+## User Management
+
+### `/admin users-list`
+List all users who have used the bot.
+
+```
+/admin users-list
+```
+
+### `/admin user-delete <USER_ID>`
+Delete a user's profile and saved preferences.
+
+```
+/admin user-delete 123456789
+```
+
+### `/admin profiles-dump`
+Dump all saved user profiles.
+
+```
+/admin profiles-dump
+```
+
+## Monitoring
+
+### `/admin health`
+Check the health of all services.
+
+```
+/admin health
+```
+
+**Returns:**
+- Bot status
+- Each wrapper-manager status
+- Disk/memory usage
+
+### `/admin stats`
+Display bot statistics.
+
+```
+/admin stats
+```
+
+**Shows:**
+- Total downloads processed
+- Total files uploaded
+- Average processing time
+- Errors in the last 24h
+
+---
+
+**Note:** Only users listed in `ADMIN_IDS` (in `.env`) can run these commands.
+
+See [User Commands](/commands/user-commands) for regular download commands.

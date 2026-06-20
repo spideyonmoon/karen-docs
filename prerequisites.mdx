@@ -1,0 +1,149 @@
+---
+title: "Prerequisites"
+description: "What you need before deploying Karen"
+---
+
+Everything you need to deploy Karen successfully.
+
+## Hardware & Infrastructure
+
+### Linux VPS
+
+- **OS:** Ubuntu 20.04 LTS or Debian 11+ (recommended)
+- **CPU:** 2+ cores (4+ recommended for 2+ wrapper-manager instances)
+- **RAM:** 4GB minimum (8GB+ recommended for multi-account)
+- **Disk:** 30GB+ free (each emulator ~2GB + operating overhead)
+- **Docker & Docker Compose:** Installed and running
+
+Check your setup:
+```bash
+docker --version
+docker compose version
+```
+
+## Telegram
+
+### Bot Token
+
+Create a new Telegram bot via [@BotFather](https://t.me/BotFather):
+
+1. Message `/newbot`
+2. Give it a name (e.g., "Karen Music")
+3. Copy the HTTP API token → paste in `.env` as `TELEGRAM_BOT_TOKEN`
+
+### Chat IDs (Whitelist)
+
+Karen restricts who can send commands. You need the **numeric chat ID** of allowed users/groups:
+
+```bash
+TELEGRAM_ALLOWED_CHAT_IDS="-100123456789,111111111"
+```
+
+**How to find your chat ID:**
+
+1. Start a chat with [@userinfobot](https://t.me/userinfobot) on Telegram
+2. It replies with your numeric ID
+3. For a **group**, add the bot, send a message, then check the bot logs for the chat ID
+
+### Admin IDs (Optional)
+
+Admin users can run `/admin` commands (restart services, clear cache, etc.):
+
+```bash
+ADMIN_IDS="111111111,222222222"
+```
+
+### MTProto Uploads (Optional)
+
+For files >50MB, Karen uses MTProto (Telegram's native protocol). You need:
+
+1. Go to [my.telegram.org](https://my.telegram.org)
+2. Log in with your personal account
+3. Go to **API Development Tools**
+4. Copy `api_id` and `api_hash`
+5. Paste into `.env`:
+
+```bash
+TELEGRAM_API_ID=12345
+TELEGRAM_API_HASH="abcdef1234567890"
+```
+
+<Tip>
+  Use a personal account, not the bot account. The bot account doesn't need MTProto credentials.
+</Tip>
+
+## Apple Music
+
+### Apple Music Accounts
+
+You need **one Apple Music account per wrapper-manager instance**. Each account:
+
+- ✅ Must be an **Apple Music subscriber** (trial or paid)
+- ✅ Should have **2FA disabled** (login automation doesn't handle 2FA prompts)
+- ✅ Will be logged in once during `setup.sh`, then reused on every subsequent start
+
+In `.env`, add pairs:
+
+```bash
+APPLE_ID_1="first-account@example.com"
+APPLE_PASS_1="password1"
+
+APPLE_ID_2="second-account@example.com"
+APPLE_PASS_2="password2"
+```
+
+<Warning>
+  Store `.env` securely. It contains plaintext passwords. On a VPS, use:
+  ```bash
+  chmod 600 .env
+  ```
+</Warning>
+
+### Media User Token (Optional but Recommended)
+
+For better metadata and search, grab the `MediaUserToken` from Apple Music's web API:
+
+1. Open [music.apple.com](https://music.apple.com) in your browser
+2. Open Developer Tools (F12)
+3. Search for any song
+4. In the **Network** tab, find a request to `music.apple.com/v1/...`
+5. Look for the `Music-User-Token` header → copy it
+6. Paste into `.env`:
+
+```bash
+MEDIA_USER_TOKEN="your-token-here"
+```
+
+## File Delivery (Optional)
+
+### Gofile API Token (Fallback Delivery)
+
+For files that don't fit even in Telegram ZIP (>2GB), Karen can upload to [Gofile](https://gofile.io) as a fallback:
+
+1. Visit [gofile.io](https://gofile.io)
+2. Create a free account or get your anonymous token
+3. Paste into `.env`:
+
+```bash
+GOFILE_TOKEN="abcdef1234567890"
+```
+
+If not set, Karen will warn users and ask for alternative delivery.
+
+## Frida (Already Included)
+
+Karen uses **Frida** for DRM decryption. It's bundled in the Docker image, so you don't need to install anything manually.
+
+## Checklist
+
+Before running `./setup.sh`:
+
+- [ ] VPS running Ubuntu/Debian with Docker
+- [ ] Telegram Bot Token (from @BotFather)
+- [ ] Your Telegram numeric chat ID
+- [ ] At least one Apple Music account (2FA disabled)
+- [ ] `.env` file filled in
+- [ ] (Optional) Telegram API credentials
+- [ ] (Optional) Gofile token
+
+**Next:** [→ Setup Guide](/setup)

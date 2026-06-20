@@ -1,0 +1,121 @@
+---
+title: "User Commands"
+description: "Available Telegram commands for ripping music"
+---
+
+All commands available to regular users of the Karen bot.
+
+## Music Commands
+
+### `/dl <URL>`
+Download a song, album, or playlist from Apple Music.
+
+```
+/dl https://music.apple.com/us/album/song-name/id123?i=456
+```
+
+**Supported:**
+- Individual songs
+- Albums
+- Playlists
+- Artists (rips all albums)
+- Music videos
+
+**Returns:** File uploaded to Telegram, along with metadata.
+
+### `/search <query>`
+Search Apple Music for songs, albums, or artists.
+
+```
+/search taylor swift
+```
+
+**Returns:** Numbered list of results. React with a number to rip that item.
+
+### `/playlist <URL>`
+Rip an entire playlist from Apple Music.
+
+```
+/playlist https://music.apple.com/us/playlist/...
+```
+
+**Returns:** Zipped or MTProto upload of all songs in the playlist.
+
+## Profile Commands
+
+### `/profile set <key>=<value>`
+Save your rip preferences to use by default.
+
+```
+/profile set format=alac
+/profile set upload=mtproto
+```
+
+**Available settings:**
+- `format`: `alac`, `aac` (default: `alac`)
+- `upload`: `botapi`, `mtproto`, `gofile` (default: auto)
+
+### `/profile show`
+Display your saved preferences.
+
+```
+/profile show
+```
+
+### `/profile clear`
+Clear all saved preferences.
+
+```
+/profile clear
+```
+
+## Info Commands
+
+### `/start`
+Display the welcome message and quick help.
+
+```
+/start
+```
+
+### `/help`
+Show all available commands.
+
+```
+/help
+```
+
+### `/about`
+Display Karen's version and project information.
+
+```
+/about
+```
+
+## Examples
+
+**Rip a single song (uses your saved format):**
+```
+/dl https://music.apple.com/us/song/...
+```
+
+**Force AAC format (override your default):**
+```
+/dl -aac https://music.apple.com/us/song/...
+```
+
+**Search and pick a result:**
+```
+/search the weeknd blinding lights
+# Bot responds with numbered list
+# React with :1: to rip first result
+```
+
+**Rip an entire album:**
+```
+/dl https://music.apple.com/us/album/...
+```
+
+---
+
+See [Admin Commands](/commands/admin-commands) for bot management (restart, cache clear, etc.).

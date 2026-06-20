@@ -1,53 +1,98 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
-  "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+  "name": "Karen",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
   },
   "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0D9488",
+    "light": "#06D6A0",
+    "dark": "#086860"
+  },
   "navigation": {
     "pages": [
       {
         "group": "Getting Started",
         "pages": [
           "index",
-          "quickstart"
+          "quickstart",
+          "prerequisites",
+          "setup"
+        ]
+      },
+      {
+        "group": "Architecture",
+        "pages": [
+          "architecture/overview",
+          "architecture/bot",
+          "architecture/wrapper-manager",
+          "architecture/pool",
+          "architecture/deployment"
+        ]
+      },
+      {
+        "group": "Bot Commands",
+        "pages": [
+          "commands/user-commands",
+          "commands/admin-commands",
+          "commands/profiles"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api/mtproto",
+          "api/grpc",
+          "api/music-api"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/configuration",
+          "guides/multi-account-scaling",
+          "guides/troubleshooting",
+          "guides/dfm-widevine"
+        ]
+      },
+      {
+        "group": "Development",
+        "pages": [
+          "dev/contributing",
+          "dev/building",
+          "dev/testing"
         ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "href": "https://github.com/spideyonmoon/karen",
+          "icon": "github"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Telegram",
+          "href": "https://t.me/spideyonmoon",
+          "icon": "telegram"
         }
       ]
     }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
   },
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "https://t.me/spideyonmoon"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "GitHub",
+      "href": "https://github.com/spideyonmoon/karen"
     }
   },
   "contextual": {
@@ -64,9 +109,8 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/spideyonmoon/karen",
+      "x": "https://x.com/spideyonmoon"
     }
   }
 }

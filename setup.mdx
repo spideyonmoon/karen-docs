@@ -1,0 +1,186 @@
+---
+title: "Setup"
+description: "Complete setup guide for Karen"
+---
+
+Detailed walkthrough for deploying Karen to your VPS.
+
+## Step 1: Clone the Repository
+
+```bash
+git clone -b feat/wrapper-manager https://github.com/spideyonmoon/karen.git ~/karen
+cd ~/karen
+```
+
+## Step 2: Configure `.env`
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+### Required Settings
+
+| Key | Example | Notes |
+|-----|---------|-------|
+| `TELEGRAM_BOT_TOKEN` | `123456:ABCdef...` | From @BotFather |
+| `TELEGRAM_ALLOWED_CHAT_IDS` | `-100123456789,111111111` | Whitelist of users/groups |
+| `APPLE_ID_1` | `user@example.com` | First Apple Music account |
+| `APPLE_PASS_1` | `password123` | First account's password |
+
+### Optional Settings
+
+| Key | Example | Purpose |
+|-----|---------|---------|
+| `TELEGRAM_API_ID` | `12345` | Enable MTProto uploads (>50MB) |
+| `TELEGRAM_API_HASH` | `abc123...` | Enable MTProto uploads |
+| `MEDIA_USER_TOKEN` | `token...` | Better Apple Music metadata |
+| `ADMIN_IDS` | `111111111,222222222` | Users who can run admin commands |
+| `GOFILE_TOKEN` | `token...` | Fallback for oversized files |
+
+### Multi-Account Scaling
+
+To add more Apple Music accounts, add more pairs:
+
+```bash
+APPLE_ID_1="account1@example.com"
+APPLE_PASS_1="pass1"
+
+APPLE_ID_2="account2@example.com"
+APPLE_PASS_2="pass2"
+
+APPLE_ID_3="account3@example.com"
+APPLE_PASS_3="pass3"
+```
+
+Each pair creates a new wrapper-manager instance. The bot's pool balances load across them.
+
+<Tip>
+  `storefront` is fixed to `us` and is intentionally not configurable.
+</Tip>
+
+## Step 3: Run Bootstrap Script
+
+```bash
+./setup.sh
+```
+
+This script:
+
+1. **Generates config files** from `.env`
+   - `bot/config.yaml` (bot settings)
+   - `docker-compose.override.yml` (wrapper-manager services + volumes)
+
+2. **Builds the Karen wrapper-manager image**
+   - Clones upstream [wrapper-manager](https://github.com/WorldObservationLog/wrapper-manager)
+   - Applies patches (WebPlayback nil-safety, emulator timeout tuning)
+
+3. **Boots all services**
+   - Starts each wrapper-manager in a separate container
+   - Starts the bot
+
+4. **Logs in Apple accounts** (one-time per account)
+   - Runs `./do-login.sh` for each `APPLE_ID_N` / `APPLE_PASS_N` pair
+   - Each wrapper-manager logs in via gRPC, stores token in its volume
+   - Subsequent starts reuse the token (no re-login unless volume is lost)
+
+5. **Waits for readiness**
+   - You'll see `Telegram bot started. Waiting for updates...`
+
+### Monitor Startup
+
+```bash
+docker compose logs -f bot
+```
+
+Expected output:
+
+```
+bot-1  | 2024-06-20 12:34:56 [INFO] Wrapper wrapper-1 ready
+bot-1  | 2024-06-20 12:34:58 [INFO] Wrapper wrapper-2 ready
+bot-1  | 2024-06-20 12:35:01 [INFO] Telegram bot started. Waiting for updates...
+```
+
+### Troubleshooting Startup
+
+**Wrapper won't start:**
+- Check if ports (8081, 8082, …) are in use: `lsof -i :8081`
+- Check Docker logs: `docker compose logs wrapper-1`
+- Ensure enough disk for emulator image
+
+**Login fails:**
+- Verify `.env` has correct Apple ID and password
+- Check `do-login.sh` output for auth errors
+- Ensure 2FA is disabled on the Apple account
+
+**Bot won't connect to Telegram:**
+- Verify `TELEGRAM_BOT_TOKEN` is correct
+- Check network access to Telegram API
+
+## Step 4: Test
+
+Send your bot a Telegram message:
+
+```
+/start
+```
+
+Try ripping a song:
+
+```
+/dl https://music.apple.com/us/album/song/id123?i=456
+```
+
+Watch the logs:
+
+```bash
+docker compose logs -f bot
+```
+
+## Deployment (GitHub Actions)
+
+When you push to the `feat/wrapper-manager` branch:
+
+1. **GitHub Actions** builds a fresh `karen-wrapper-manager:latest` image
+2. **VPS webhook** pulls changes and runs `generate.sh`
+3. **New `docker-compose.override.yml`** is generated from `.env`
+4. **Services restart** with the new image and config
+5. **Existing volumes** (Apple tokens) are reused — no re-login needed
+
+This is why `.env` lives on the VPS (and is `gitignore`d). Never commit secrets to the repo.
+
+## Persistent Storage
+
+Karen uses Docker volumes for two purposes:
+
+| Volume | Purpose | Persists Across |
+|--------|---------|-----------------|
+| `wm-data-N` | Apple Music auth tokens | Restarts, redeploys, code updates |
+| `bot-state` | User profiles, cache, scheduler state | Restarts, redeploys |
+
+### Clear User Profile
+
+```bash
+docker exec karen-bot rm -f /state/profiles/USER_ID.json
+```
+
+### Force Re-login of an Apple Account
+
+```bash
+docker volume rm karen_wm-data-1
+./setup.sh  # Re-login that account
+```
+
+## What's Next?
+
+<Card title="User Commands" icon="message-square" href="/commands/user-commands">
+  Learn what users can do
+</Card>
+
+<Card title="Architecture" icon="code-branch" href="/architecture/overview">
+  Understand the design
+</Card>
+
+<Card title="Troubleshooting" icon="bug" href="/guides/troubleshooting">
+  Common issues
+</Card>
