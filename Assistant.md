@@ -91,4 +91,4 @@ When using Claude Code or other AI tools to edit this documentation:
 - Follow this Assistant.md style guide
 - Reference [CLAUDE.md](/CLAUDE.md) for project-level conventions
 - Check [AGENTS.md](/AGENTS.md) for agent behavior customization
-- Always include "Co-Authored-By: Claude [model] <noreply@anthropic.com>" in commits
+- Always include "Co-Authored-By: Claude [model] \<noreply\@anthropic.com\>" in commits

@@ -14,10 +14,12 @@
   },
   "navigation": {
     "pages": [
+      "index"
+    ],
+    "groups": [
       {
         "group": "Getting Started",
         "pages": [
-          "index",
           "quickstart",
           "prerequisites",
           "setup"
@@ -66,21 +68,7 @@
           "dev/testing"
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "GitHub",
-          "href": "https://github.com/spideyonmoon/karen",
-          "icon": "github"
-        },
-        {
-          "anchor": "Telegram",
-          "href": "https://t.me/spidey_wtf",
-          "icon": "telegram"
-        }
-      ]
-    }
+    ]
   },
   "navbar": {
     "links": [
@@ -95,6 +83,18 @@
       "href": "https://github.com/spideyonmoon/karen"
     }
   },
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/spideyonmoon/karen"
+    },
+    {
+      "name": "Telegram",
+      "icon": "telegram",
+      "url": "https://t.me/spidey_wtf"
+    }
+  ],
   "contextual": {
     "options": [
       "copy",

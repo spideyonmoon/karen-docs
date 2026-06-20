@@ -5,48 +5,27 @@ description: "Karen's multi-service design for DRM-free Apple Music downloads"
 
 Karen is a **distributed, multi-service system** that extracts lossless audio from Apple Music and delivers it via Telegram. It uses a pool-based load balancer to distribute requests across multiple wrapper-manager instances.
 
-## System Diagram
+## System Overview
+
+- **Bot** — Telegram command handler, download orchestrator, uploader
+- **Wrapper-Manager** — Android emulator with hooked Apple Music app for DRM decryption
+- **Pool** — FIFO load balancer across all wrapper-manager instances
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                    Telegram User                         │
-└────────────────────────┬─────────────────────────────────┘
-                         │ /dl, /search, /playlist
-                         ▼
-        ┌────────────────────────────────┐
-        │  Karen Bot (Go)                │
-        │  - Telegram command handler    │
-        │  - Download orchestrator       │
-        │  - MTProto uploader            │
-        │  - User profile manager        │
-        └────┬───────────────────────┬───┘
-             │                       │
-        ┌────▼──────────┐    ┌──────▼─────────┐
-        │  Pool (FIFO)  │    │  Config / CLI  │
-        │  - Load bal.  │    │  - User prefs  │
-        │  - Rotation   │    │  - Saved rips  │
-        └────┬──────────┘    └────────────────┘
-             │ gRPC (bidirectional)
-        ┌────▼──────────────────────────────┐
-        │   Wrapper-Manager Instances       │
-        │  (one per Apple Music account)    │
-        ├─────────────────────────────────┐ │
-        │ ┌──────────────────────────────┐ │ │
-        │ │ Wrapper #1 (Account 1)       │ │ │
-        │ │ - Android emulator + Frida   │ │ │
-        │ │ - Apple Music app hooks      │ │ │
-        │ │ - gRPC: Login, M3U8, Decrypt│ │ │
-        │ │ - Port 8081, Volume: wm-1   │ │ │
-        │ └─────────────────��────────────┘ │ │
-        │ ┌──────────────────────────────┐ │ │
-        │ │ Wrapper #2 (Account 2)       │ │ │
-        │ │ - Android emulator + Frida   │ │ │
-        │ │ - Apple Music app hooks      │ │ │
-        │ │ - gRPC: Login, M3U8, Decrypt│ │ │
-        │ │ - Port 8082, Volume: wm-2   │ │ │
-        │ └──────────────────────────────┘ │ │
-        │              ...                  │
-        └─────────────────────────────────┘
+Telegram User
+    |
+    | /dl command
+    |
+    v
+Karen Bot (Go)
+    |
+    | gRPC
+    |
+    v
+Wrapper-Manager Instances (one per Apple Music account)
+    - Frida-hooked Android emulator
+    - DRM decryption oracle
+    - gRPC endpoints: Login, GetM3U8, Decrypt
 ```
 
 ## Core Components
@@ -113,32 +92,43 @@ pool.Release(worker)      // returns to pool
 
 ```
 User: /dl https://music.apple.com/...
-  ↓
+  |
+  v
 Bot: Parse URL, fetch song metadata
-  ↓
+  |
+  v
 Bot: Acquire wrapper-manager from pool
-  ↓
+  |
+  v
 Wrapper: GetM3U8(song_id)
-  ← Wrapper sends M3U8 (HLS playlist) + DRM key
-  ↓
+  <- Wrapper sends M3U8 (HLS playlist) + DRM key
+  |
+  v
 Bot: Download HLS segments in parallel (4 workers)
-  ↓
+  |
+  v
 Bot: Open bidirectional gRPC stream: Decrypt(segments)
-  ↓
-Bot ↔ Wrapper: Send encrypted, recv decrypted (interleaved)
-  ↓
+  |
+  v
+Bot <-> Wrapper: Send encrypted, recv decrypted (interleaved)
+  |
+  v
 Bot: Remux with ffmpeg (ALAC + metadata + cover)
-  ↓
+  |
+  v
 Bot: Determine upload method (file size)
   - <50MB: Bot API direct
-  - 50MB–2GB: MTProto upload
+  - 50MB-2GB: MTProto upload
   - >2GB: Gofile + link
-  ↓
+  |
+  v
 Bot: Upload + send to Telegram
-  ↓
+  |
+  v
 Bot: Release wrapper back to pool
-  ↓
-User: Receives file ✅
+  |
+  v
+User: Receives file OK
 ```
 
 ## Key Design Decisions
@@ -167,9 +157,9 @@ Volumes are **not** automatically deleted on `docker compose down`, so data pers
 
 **Scale horizontally** by increasing `APPLE_ID_N` / `APPLE_PASS_N` pairs:
 
-- 1 account: ~2–3 concurrent downloads
-- 2 accounts: ~4–6 concurrent downloads
-- N accounts: ~2N–3N concurrent downloads
+- 1 account: ~2-3 concurrent downloads
+- 2 accounts: ~4-6 concurrent downloads
+- N accounts: ~2N-3N concurrent downloads
 
 Each wrapper-manager uses ~1.5GB RAM + 2GB disk (emulator image). VPS should have:
 
@@ -190,7 +180,7 @@ Karen does **not** authenticate users by default — it trusts Telegram's chat I
 **Mitigations:**
 
 1. **Always** set `TELEGRAM_ALLOWED_CHAT_IDS` to a private group or your ID only
-2. **Keep `.env` secure** (chmod 600, not in git, not in screenshots)
+2. **Keep .env secure** (chmod 600, not in git, not in screenshots)
 3. **Rotate tokens** if compromised
 
 See [Troubleshooting](/guides/troubleshooting) for security best practices.
