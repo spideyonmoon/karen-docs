@@ -17,7 +17,7 @@
       {
         "group": "Getting Started",
         "pages": [
-          "index",
+          "introduction",
           "quickstart",
           "prerequisites",
           "setup"
@@ -76,7 +76,7 @@
         },
         {
           "anchor": "Telegram",
-          "href": "https://t.me/spideyonmoon",
+          "href": "https://t.me/spidey_wtf",
           "icon": "telegram"
         }
       ]
@@ -86,7 +86,7 @@
     "links": [
       {
         "label": "Support",
-        "href": "https://t.me/spideyonmoon"
+        "href": "https://t.me/spidey_wtf"
       }
     ],
     "primary": {
